@@ -1,30 +1,131 @@
-#include "HX711.h"
+//Changes to make: currently the program is sending the message on pressing the key, send it after certain interval.
 
-// HX711 circuit wiring
-#define DT 4   // HX711 data pin
-#define SCK 5  // HX711 clock pin
+#include <WiFi.h>
+#include <HX711.h>
+#include <Keypad.h>
+#include <LiquidCrystal_I2C.h>
+#include <HTTPClient.h>
 
+// WiFi Credentials
+const char* ssid = "Your_SSID";
+const char* password = "Your_PASSWORD";
+
+// LCD
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // Adjust address if needed
+
+// HX711
+#define DT 4
+#define SCK 5
 HX711 scale;
-
-//DEBUGGER VARIABLES
-bool debug_mode = true;
-const int table_id = 21;  //TABLE ID IS PRE-SET
-const float unit_weight = 150.00; 
-
-//PROGRAM VARIABLES
-bool job_status = false;
-int job_id = 0;
-int process_id = 0;
-int prd_cnt = 0;
-float m_weight = 0;
-
-// CALIBRATION_FACTOR
 float calibration_factor = -7050;
+
+// Table Settings
+const int table_id = 21;
+const float unit_weight = 150.0;
+
+// Keypad Setup
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+byte rowPins[ROWS] = {19, 18, 5, 17};  // Update as per your wiring
+byte colPins[COLS] = {16, 4, 0, 2};    // Update as per your wiring
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+// Variables
+String job_id = "";
+String process_id = "";
+int product_count = 0;
+float measured_weight = 0.0;
+bool job_registered = false;
+unsigned long last_sent = 0;
+
+void setup() {
+  Serial.begin(115200);
+  lcd.init();
+  lcd.backlight();
+
+  lcd.print("Connecting WiFi");
+  WiFi.begin(ssid, password);
+
+  int wifi_attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && wifi_attempts < 20) {
+    delay(500);
+    lcd.print(".");
+    wifi_attempts++;
+  }
+
+  lcd.clear();
+  if (WiFi.status() == WL_CONNECTED) {
+    lcd.print("WiFi Connected!");
+    delay(1500);
+  } else {
+    lcd.print("WiFi Failed!");
+    while (1); // halt
+  }
+
+  scale.begin(DT, SCK);
+  if (calibration_mode) {
+    //INITIAL CALIBRATION: ONLY FOR DEBUGGING PURPOSE
+    calibrate();
+  }
+  scale.set_scale(calibration_factor);
+
+  lcd.clear();
+  lcd.print("Welcome!");
+  delay(1500);
+  lcd.clear();
+
+  job_registration();  // Start input
+}
+
+void job_registration() {
+  lcd.clear();
+  lcd.print("Enter Job ID:");
+  job_id = getInputFromKeypad();
+
+  lcd.clear();
+  lcd.print("Enter Proc ID:");
+  process_id = getInputFromKeypad();
+
+  lcd.clear();
+  lcd.print("Press A to Start");
+  while (keypad.getKey() != 'A') delay(10);
+
+  job_registered = true;
+  lcd.clear();
+  lcd.print("Started Job");
+  delay(1000);
+}
+
+String getInputFromKeypad() {
+  String input = "";
+  char key;
+  lcd.setCursor(0, 1);
+  while (true) {
+    key = keypad.getKey();
+    if (key) {
+      if (key == '#') break;        // End input on #
+      else if (key == '*') {        // Clear input on *
+        input = "";
+        lcd.setCursor(0, 1);
+        lcd.print("                ");
+        lcd.setCursor(0, 1);
+      } else if (key >= '0' && key <= '9') {
+        input += key;
+        lcd.print(key);
+      }
+    }
+  }
+  return input;
+}
 
 void calibrate() {
   Serial.println("HX711 Calibration");
-
-  scale.begin(DT, SCK);
 
   Serial.println("Place the scale on a stable surface and remove all weight...");
   delay(2000);
@@ -45,58 +146,65 @@ void calibrate() {
   Serial.println("Enter actual weight in grams into the code and adjust calibration_factor.");
 }
 
-void job_registration(){
-  //ASK FOR JOB NUMBER IN DISPLAY
-  
-  //MAKE THE KEYPAD ACTIVE AND TAKE INPUT OF JOB NUMBER.
-
-  //ASK FOR PROCESS NUMBER IN DISPLAY
-  
-  //MAKE THE KEYPAD ACTIVE AND TAKE INPUT OF PROCESS NUMBER.
-
-  //IF CONFIRM THEN, MAKE THE job_status TRUE
-}
-
-void connect_router(){
-  //FUNCTION TO CONNECT TO THE ROUTER WITH CERTAIN SSID AND PASSWORD
-}
-
-void send_info(){
-  //SEND THE INFORMATION TO THE ROUTER 
-
-  //INFO TO BE SENT: table_id+job_id+process_id+m_weight+prd_cnt
-}
-
-void setup() {
-
-  //GREETING MESSAGE: TO BE DISPLAYED ON LCD OF WEIGHT TRAY
-
-  //SERIAL MONITOR INITIATION
-  Serial.begin(115200);
-  delay(500);
-
-  if (debug_mode) {
-    //INITIAL CALIBRATION: ONLY FOR DEBUGGING PURPOSE
-    calibrate();
-  }
-}
-
 void loop() {
+  if (!job_registered) return;
 
-  //CALIBRATION
-  scale.set_scale(calibration_factor);  // Apply the calibration factor
+  measured_weight = scale.get_units(10);
+  product_count = (int)(measured_weight / unit_weight);
 
-  //WEIGHT_MEASUREMENT
-  Serial.print("Weight: ");
-  m_weight = scale.get_units(10), 2;
-  Serial.print(m_weight);  // 10 readings averaged to 2 decimal places
-  Serial.println(" g");
+  // Show weight and count
+  lcd.setCursor(0, 0);
+  lcd.print("Wt: ");
+  lcd.print(measured_weight, 1);
+  lcd.print("g     ");
 
-  //PRODUCT_COUNT
-  prd_cnt = (int)(m_weight / unit_weight);
-  Serial.print("Product count: ");
-  Serial.println(prd_cnt);
+  lcd.setCursor(0, 1);
+  lcd.print("Cnt:");
+  lcd.print(product_count);
+  lcd.print("  ");
 
-  //SEND THE PRODUCT COUNT TO THE SERVER IN EVERY 30 SECs
-  delay(1000);
+  // End process on key A
+  char key = keypad.getKey();
+  if (key == 'A') {
+    send_info();
+    lcd.clear();
+    lcd.print("Data Sent!");
+    delay(2000);
+
+    job_registered = false;
+    job_id = "";
+    process_id = "";
+    product_count = 0;
+    measured_weight = 0;
+
+    job_registration();  // Start next job
+  }
+
+  delay(500);  // Polling delay
+}
+
+void send_info() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = "http://<your-server-ip>/receive";  // Replace with your endpoint
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+
+    String json = "{";
+    json += "\"table_id\":" + String(table_id) + ",";
+    json += "\"job_id\":\"" + job_id + "\",";
+    json += "\"process_id\":\"" + process_id + "\",";
+    json += "\"weight\":" + String(measured_weight, 2) + ",";
+    json += "\"product_count\":" + String(product_count);
+    json += "}";
+
+    int httpResponseCode = http.POST(json);
+    Serial.print("HTTP Response code: ");
+    Serial.println(httpResponseCode);
+    http.end();
+  } else {
+    lcd.clear();
+    lcd.print("No WiFi Conn!");
+    delay(2000);
+  }
 }
