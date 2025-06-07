@@ -4,11 +4,17 @@
 #include <HX711.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
-#include <HTTPClient.h>
+#include <PubSubClient.h>
 
 // WiFi Credentials
 const char* ssid = "Your_SSID";
 const char* password = "Your_PASSWORD";
+
+const char* mqtt_server = "192.168.1.100";  // Local PC IP running Node.js MQTT broker like Mosquitto
+const int mqtt_port = 1883;
+
+WiFiClient espClient;
+PubSubClient client(espClient);
 
 // LCD
 LiquidCrystal_I2C lcd(0x27, 16, 2);  // Adjust address if needed
@@ -62,6 +68,8 @@ void setup() {
 
   lcd.clear();
   if (WiFi.status() == WL_CONNECTED) {
+    client.setServer(mqtt_server, mqtt_port);
+    reconnect_mqtt();
     lcd.print("WiFi Connected!");
     delay(1500);
   } else {
@@ -103,6 +111,19 @@ void job_registration() {
   delay(1000);
 }
 
+void reconnect_mqtt() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    if (client.connect("ESP32Client")) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      delay(2000);
+    }
+  }
+}
+
 String getInputFromKeypad() {
   String input = "";
   char key;
@@ -134,7 +155,7 @@ void calibrate() {
   scale.set_scale();  // Set an initial dummy scale
   scale.tare();       // Reset the scale to 0
 
-  Serial.println("Tare complete. Place a known weight on the scale.");
+  Serial.println("Tare complete. Place a known weight on the scale.");s
 
   // Wait 5 seconds for you to place a known weight
   delay(5000);
@@ -188,31 +209,22 @@ void loop() {
     job_registration();  // Start next job
   }
 
+  client.loop();  // Needed for MQTT to handle incoming/outgoing messages
   delay(100);  // Smooth polling
 }
 
 void send_info() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    String url = "http://<your-server-ip>/receive";  // Replace with your endpoint
-    http.begin(url);
-    http.addHeader("Content-Type", "application/json");
-
-    String json = "{";
-    json += "\"table_id\":" + String(table_id) + ",";
-    json += "\"job_id\":\"" + job_id + "\",";
-    json += "\"process_id\":\"" + process_id + "\",";
-    json += "\"weight\":" + String(measured_weight, 2) + ",";
-    json += "\"product_count\":" + String(product_count);
-    json += "}";
-
-    int httpResponseCode = http.POST(json);
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-    http.end();
-  } else {
-    lcd.clear();
-    lcd.print("No WiFi Conn!");
-    delay(2000);
+  if (!client.connected()) {
+    reconnect_mqtt();
   }
+  client.loop();  // Needed for PubSubClient
+
+  String payload = String("{\"table_id\":") + table_id +
+                 ",\"job_id\":\"" + job_id +
+                 "\",\"process_id\":\"" + process_id +
+                 "\",\"weight\":" + measured_weight +
+                 ",\"count\":" + product_count + "}";
+
+  client.publish("machine/data", payload.c_str());
+  Serial.println("Published: " + payload);
 }
