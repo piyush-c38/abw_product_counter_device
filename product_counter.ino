@@ -1,4 +1,4 @@
-//Changes to make: currently the program is sending the message on pressing the key, send it after certain interval.
+//Changes to make: implement the calibration storage at last.
 
 #include <WiFi.h>
 #include <HX711.h>
