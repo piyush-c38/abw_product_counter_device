@@ -42,6 +42,7 @@ String process_id = "";
 int product_count = 0;
 float measured_weight = 0.0;
 bool job_registered = false;
+const unsigned long send_interval = 10000; // 10 seconds
 unsigned long last_sent = 0;
 
 void setup() {
@@ -163,24 +164,31 @@ void loop() {
   lcd.print(product_count);
   lcd.print("  ");
 
-  // End process on key A
+  // Send data every send_interval ms
+  if (millis() - last_sent >= send_interval) {
+    send_info();
+    delay(1000);
+    last_sent = millis();
+  }
+
+  // Optionally allow job reset with 'A' key
   char key = keypad.getKey();
   if (key == 'A') {
-    send_info();
     lcd.clear();
-    lcd.print("Data Sent!");
-    delay(2000);
+    lcd.print("Ending Job...");
+    delay(1000);
 
     job_registered = false;
     job_id = "";
     process_id = "";
     product_count = 0;
     measured_weight = 0;
+    last_sent = 0;
 
     job_registration();  // Start next job
   }
 
-  delay(500);  // Polling delay
+  delay(100);  // Smooth polling
 }
 
 void send_info() {
