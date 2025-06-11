@@ -7,10 +7,10 @@
 #include <PubSubClient.h>
 
 // WiFi Credentials
-const char* ssid = "Your_SSID";
-const char* password = "Your_PASSWORD";
+const char* ssid = "TP-Link_76F6";
+const char* password = "abwtplinkpass";
 
-const char* mqtt_server = "192.168.1.100";  // Local PC IP running Node.js MQTT broker like Mosquitto
+const char* mqtt_server = "192.168.0.107";  // Local PC IP running Node.js MQTT broker like Mosquitto
 const int mqtt_port = 1883;
 
 WiFiClient espClient;
