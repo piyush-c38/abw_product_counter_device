@@ -224,7 +224,6 @@ void reconnect_mqtt() {
     delay(2000);
   }
 }
-
 void send_info() {
   if (!client.connected()) reconnect_mqtt();
   client.loop();
@@ -234,8 +233,7 @@ void send_info() {
                  "\",\"process_id\":\"" + process_id +
                  "\",\"weight\":" + measured_weight +
                  ",\"count\":" + product_count + "}";
-
-  client.publish("machine/data", payload.c_str());
+  client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
 }
 
