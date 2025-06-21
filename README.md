@@ -8,3 +8,17 @@ The system basically measures the weight of the products produced by the employe
 
 * ESP32
 * (rest to be reveled later)
+
+###GPIO pins not to use
+
+* GPIO 36, 39, 34, 35 → ❌ Do not use
+* GPIO 0 → risky, avoid if possible
+* GPIO 2, 15 → can be used but have boot mode restrictions
+
+###Current Bugs
+
+* Wifi disconnection in between is not handleled.
+* MQTT connection stopped is not handeled.
+* Weight buffer is not added.
+* Weight calibration is not done properly.
+* Sudden count increase more than one is not handeled.
