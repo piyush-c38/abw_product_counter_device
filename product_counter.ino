@@ -10,7 +10,7 @@
 const char* ssid = "TP-Link_76F6";
 const char* password = "abwtplinkpass";
 
-const char* mqtt_server = "192.168.0.107";  // Local PC IP running Node.js MQTT broker like Mosquitto
+const char* mqtt_server = "192.168.0.103";  // Local PC IP running Node.js MQTT broker like Mosquitto
 const int mqtt_port = 1883;
 
 WiFiClient espClient;
@@ -20,14 +20,14 @@ PubSubClient client(espClient);
 LiquidCrystal_I2C lcd(0x27, 16, 2);  // Adjust address if needed
 
 // HX711
-#define DT 4
-#define SCK 5
+#define DT 14
+#define SCK 12
 HX711 scale;
-float calibration_factor = -7050;
-
+float calibration_factor = -15.44;
+bool calibration_mode = false;
 // Table Settings
 const int table_id = 21;
-const float unit_weight = 150.0;
+const float unit_weight = 200.0;
 
 // Keypad Setup
 const byte ROWS = 4;
@@ -56,13 +56,15 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
-  lcd.print("Connecting WiFi");
+  // lcd.print("Connecting WiFi");
+  Serial.println("Connecting WiFi");
   WiFi.begin(ssid, password);
 
   int wifi_attempts = 0;
   while (WiFi.status() != WL_CONNECTED && wifi_attempts < 20) {
     delay(500);
-    lcd.print(".");
+    // lcd.print(".");
+    Serial.print(".");
     wifi_attempts++;
   }
 
@@ -70,10 +72,12 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     client.setServer(mqtt_server, mqtt_port);
     reconnect_mqtt();
-    lcd.print("WiFi Connected!");
+    // lcd.print("WiFi Connected!");
+    Serial.println("WiFi Connected!");
     delay(1500);
   } else {
-    lcd.print("WiFi Failed!");
+    // lcd.print("WiFi Failed!");
+    Serial.print("WiFi Failed!");
     while (1); // halt
   }
 
@@ -85,7 +89,8 @@ void setup() {
   scale.set_scale(calibration_factor);
 
   lcd.clear();
-  lcd.print("Welcome!");
+  // lcd.print("Welcome!");
+  Serial.print("Welcome!");
   delay(1500);
   lcd.clear();
 
@@ -94,20 +99,24 @@ void setup() {
 
 void job_registration() {
   lcd.clear();
-  lcd.print("Enter Job ID:");
+  // lcd.print("Enter Job ID:");
+  Serial.print("Enter Job ID:");
   job_id = getInputFromKeypad();
 
   lcd.clear();
-  lcd.print("Enter Proc ID:");
+  // lcd.print("Enter Pros ID:");
+  Serial.print("Enter Pros ID:");
   process_id = getInputFromKeypad();
 
   lcd.clear();
-  lcd.print("Press A to Start");
+  // lcd.print("Press A to Start");
+  Serial.print("Press A to Start");
   while (keypad.getKey() != 'A') delay(10);
 
   job_registered = true;
   lcd.clear();
-  lcd.print("Started Job");
+  // lcd.print("Started Job");
+  Serial.print("Started Job");
   delay(1000);
 }
 
@@ -135,11 +144,13 @@ String getInputFromKeypad() {
       else if (key == '*') {        // Clear input on *
         input = "";
         lcd.setCursor(0, 1);
-        lcd.print("                ");
+        // lcd.print("                ");
+        Serial.print("                ");
         lcd.setCursor(0, 1);
       } else if (key >= '0' && key <= '9') {
         input += key;
-        lcd.print(key);
+        // lcd.print(key);
+        Serial.print(key);
       }
     }
   }
@@ -155,7 +166,7 @@ void calibrate() {
   scale.set_scale();  // Set an initial dummy scale
   scale.tare();       // Reset the scale to 0
 
-  Serial.println("Tare complete. Place a known weight on the scale.");s
+  Serial.println("Tare complete. Place a known weight on the scale.");
 
   // Wait 5 seconds for you to place a known weight
   delay(5000);
@@ -176,14 +187,19 @@ void loop() {
 
   // Show weight and count
   lcd.setCursor(0, 0);
-  lcd.print("Wt: ");
-  lcd.print(measured_weight, 1);
-  lcd.print("g     ");
+  // lcd.print("Wt: ");
+  Serial.println("Wt: ");
+  // lcd.print(measured_weight, 1);
+  Serial.print(measured_weight, 1);
+  // lcd.print("g     ");
+  Serial.print("g     ");
 
   lcd.setCursor(0, 1);
-  lcd.print("Cnt:");
-  lcd.print(product_count);
-  lcd.print("  ");
+  // lcd.print("Cnt:");
+  Serial.print("Cnt:");
+  // lcd.print(product_count);
+  Serial.println(product_count);
+  // lcd.print("  ");
 
   // Send data every send_interval ms
   if (millis() - last_sent >= send_interval) {
@@ -196,7 +212,8 @@ void loop() {
   char key = keypad.getKey();
   if (key == 'A') {
     lcd.clear();
-    lcd.print("Ending Job...");
+    // lcd.print("Ending Job...");
+    Serial.print("Ending Job...");
     delay(1000);
 
     job_registered = false;

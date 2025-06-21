@@ -7,7 +7,7 @@
 HX711 scale;
 
 // Calibration factor
-float calibration_factor = -7050.0;  // Put your calibration factor here after calibration
+float calibration_factor = -64.44;  // Put your calibration factor here after calibration
 
 void setup() {
   Serial.begin(115200);

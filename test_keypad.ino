@@ -12,11 +12,8 @@ char keys[ROWS][COLS] = {
   {'*','0','#','D'}
 };
 
-// Connect keypad ROW0, ROW1, ROW2 and ROW3 to these ESP32 pins:
-byte rowPins[ROWS] = {13, 12, 14, 27}; 
-
-// Connect keypad COL0, COL1, COL2 and COL3 to these ESP32 pins:
-byte colPins[COLS] = {26, 25, 33, 32}; 
+byte rowPins[ROWS] = {12, 14, 27, 26};
+byte colPins[COLS] = {25, 33, 32,13};
 
 // Create keypad object
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
@@ -33,4 +30,5 @@ void loop() {
     Serial.print("Key Pressed: ");
     Serial.println(key);
   }
+  delay(50);
 }
