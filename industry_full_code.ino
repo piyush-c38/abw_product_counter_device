@@ -57,6 +57,7 @@ String process_id = "";
 int product_count = 0;
 float measured_weight = 0.0;
 bool job_registered = false;
+bool job_status = false;
 const unsigned long send_interval = 10000;
 unsigned long last_sent = 0;
 
@@ -134,16 +135,40 @@ void loop() {
 
   char key = keypad.getKey();
   if (key == 'A') {
+  lcd.clear();
+  lcd.print("End Job? A:Yes");
+  lcd.setCursor(0, 1);
+  lcd.print("           B:No");
+
+  // Wait up to 5 seconds for user to confirm
+  unsigned long start = millis();
+  char confirm = NO_KEY;
+
+  while (millis() - start < 5000) {
+    confirm = keypad.getKey();
+    if (confirm == 'A' || confirm == 'B') break;
+  }
+
+  if (confirm == 'B') {
+    lcd.clear();
+    lcd.print("Cancelled...");
+    delay(1000);
+    return;  
+  } else if (confirm == 'A') {
     lcd.clear();
     lcd.print("Ending Job...");
-    //Put a confirm option
-    job_registered = false;
-    //everytime send the job_status (running/completed).
     send_info();
+    job_registered = false;
     last_sent = millis();
     delay(1000);
-    resetJob();
-    job_registration();
+    resetJob();         
+    job_registration(); 
+    return;
+  } else {
+    lcd.clear();
+    lcd.print("No input...");
+    delay(1000);
+    return;
   }
 
   client.loop();
@@ -164,6 +189,7 @@ void job_registration() {
   while (keypad.getKey() != 'A') delay(10);
 
   job_registered = true;
+  job_status = true;
   lcd.clear();
   lcd.print("Started Job");
   delay(1000);
@@ -250,7 +276,7 @@ void send_info() {
                  ",\"job_id\":\"" + job_id +
                  "\",\"process_id\":\"" + process_id +
                  "\",\"weight\":" + measured_weight +
-                 ",\"count\":" + product_count + "}";
+                 ",\"count\":" + product_count + ",\"job_status\":" + job_status + "}";
   client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
 }
@@ -261,6 +287,7 @@ void resetJob() {
   product_count = 0;
   measured_weight = 0;
   last_sent = 0;
+  job_status= false;
 }
 
 char waitForKey(int timeout_ms) {
