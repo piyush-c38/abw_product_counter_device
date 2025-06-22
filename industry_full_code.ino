@@ -129,16 +129,11 @@ void loop() {
   lcd.print("Wt:");
   lcd.print(measured_weight, 1);
   lcd.print("g    ");
-  // Serial.print("Wt: ");
-  // Serial.print(measured_weight, 1);
-  // Serial.println(" g");
 
   lcd.setCursor(0, 1);
   lcd.print("Cnt:");
   lcd.print(product_count);
   lcd.print("    ");
-  // Serial.print("Count: ");
-  // Serial.println(product_count);
 
   if (millis() - last_sent >= send_interval) {
     send_info();
@@ -149,9 +144,12 @@ void loop() {
   if (key == 'A') {
     lcd.clear();
     lcd.print("Ending Job...");
-    // Serial.println("Ending Job...");
-    delay(1000);
+    //Put a confirm option
     job_registered = false;
+    //everytime send the job_status (running/completed).
+    send_info();
+    last_sent = millis();
+    delay(1000);
     resetJob();
     job_registration();
   }

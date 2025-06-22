@@ -23,3 +23,5 @@ The system basically measures the weight of the products produced by the employe
 * Weight calibration is not done properly.
 * Sudden count increase more than one is not handeled.
 * write counter function in calibrate.
+* Put a confirm option before ending job.
+* Everytime send the job_status (running/completed).
