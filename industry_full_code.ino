@@ -163,23 +163,19 @@ void loop() {
 void job_registration() {
   lcd.clear();
   lcd.print("Enter Job ID:");
-  // Serial.println("Enter Job ID:");
   job_id = getInputFromKeypad();
 
   lcd.clear();
   lcd.print("Enter Proc ID:");
-  // Serial.println("Enter Proc ID:");
   process_id = getInputFromKeypad();
 
   lcd.clear();
   lcd.print("Press A to Start");
-  // Serial.println("Press A to Start");
   while (keypad.getKey() != 'A') delay(10);
 
   job_registered = true;
   lcd.clear();
   lcd.print("Started Job");
-  // Serial.println("Started Job");
   delay(1000);
 }
 
