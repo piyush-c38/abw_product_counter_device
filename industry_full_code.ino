@@ -211,14 +211,13 @@ String getInputFromKeypad() {
 void calibrate() {
   lcd.clear();
   lcd.print("Taring...");
-  // Serial.println("Taring...");
   scale.set_scale();
   scale.tare();
   delay(2000);
 
   lcd.clear();
   lcd.print("Put weight now");
-  // Serial.println("Put known weight now");
+  //write a function to display reverse counter on LCD.
   delay(5000);
 
   long reading = scale.get_units(10);
@@ -227,7 +226,6 @@ void calibrate() {
 
   lcd.clear();
   lcd.print("Enter Wt(g)#");
-  // Serial.println("Enter weight (g) then press #");
   String known_weight_str = getInputFromKeypad();
   float known_weight = known_weight_str.toFloat();
 
@@ -237,8 +235,6 @@ void calibrate() {
   lcd.clear();
   lcd.print("Calib:");
   lcd.print(calibration_factor, 1);
-  // Serial.print("New Calib Factor: ");
-  // Serial.println(calibration_factor, 1);
   delay(1500);
 
   EEPROM.put(CALIB_ADDR, calibration_factor);
@@ -246,7 +242,6 @@ void calibrate() {
 
   lcd.clear();
   lcd.print("Saved EEPROM");
-  // Serial.println("Calibration saved to EEPROM");
   delay(1000);
 }
 
