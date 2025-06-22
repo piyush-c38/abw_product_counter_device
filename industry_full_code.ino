@@ -66,24 +66,20 @@ void setup() {
   lcd.backlight();
 
   lcd.print("Connecting WiFi");
-  // Serial.println("Connecting WiFi");
   WiFi.begin(ssid, password);
   int wifi_attempts = 0;
   while (WiFi.status() != WL_CONNECTED && wifi_attempts < 20) {
     delay(500);
     lcd.print(".");
-    // Serial.print(".");
     wifi_attempts++;
   }
   lcd.clear();
   if (WiFi.status() == WL_CONNECTED) {
     lcd.print("WiFi Connected");
-    // Serial.println("WiFi Connected");
     client.setServer(mqtt_server, mqtt_port);
     reconnect_mqtt();
   } else {
     lcd.print("WiFi Failed!");
-    // Serial.println("WiFi Failed!");
     while (1);
   }
   delay(1000);
@@ -96,8 +92,6 @@ void setup() {
   lcd.clear();
   lcd.print("Calib:");
   lcd.print(calibration_factor, 1);
-  // Serial.print("Calib: ");
-  // Serial.println(calibration_factor, 1);
   delay(1500);
 
   scale.begin(DT, SCK);
@@ -106,14 +100,12 @@ void setup() {
 
   lcd.clear();
   lcd.print("D=Calibrate");
-  // Serial.println("D=Calibrate");
   delay(2000);
   char key = waitForKey(3000);
   if (key == 'D') calibrate();
 
   lcd.clear();
   lcd.print("System Ready");
-  // Serial.println("System Ready");
   delay(1000);
   lcd.clear();
   job_registration();
@@ -211,8 +203,13 @@ void calibrate() {
 
   lcd.clear();
   lcd.print("Put weight now");
-  //write a function to display reverse counter on LCD.
-  delay(5000);
+  int timer = 5;
+  while(timer>0){
+    lcd.setCursor(0, 1);
+    lcd.print(timer);
+    delay(1000);
+    timer--;
+  }
 
   long reading = scale.get_units(10);
   Serial.print("Raw reading: ");

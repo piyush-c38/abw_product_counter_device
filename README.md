@@ -17,11 +17,11 @@ The system basically measures the weight of the products produced by the employe
 
 ###Current Bugs
 
-* Wifi disconnection in between is not handleled.
+* Midway Wifi disconnection in between is not handleled.
 * MQTT connection stopped is not handeled.
 * Weight buffer is not added.
 * Weight calibration is not done properly.
 * Sudden count increase more than one is not handeled.
-* write counter function in calibrate.
 * Put a confirm option before ending job.
 * Everytime send the job_status (running/completed).
+* unit weight of different items with respect to product is not stored(do this at backend itself)
