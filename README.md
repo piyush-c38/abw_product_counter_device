@@ -17,8 +17,6 @@ The system basically measures the weight of the products produced by the employe
 
 ###Current Bugs
 
-* Midway Wifi disconnection in between is not handleled.
-* If the MQTT server is stopped in between then this is not handeled.
 * Weight buffer is not added.
 * Weight calibration is not done properly.
 * Sudden count increase more than one is not handeled.
