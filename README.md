@@ -22,3 +22,4 @@ The system basically measures the weight of the products produced by the employe
 * Weight buffer is not added.
 * Weight calibration is not done properly.
 * Sudden count increase more than one is not handeled.
+* write counter function in calibrate.
