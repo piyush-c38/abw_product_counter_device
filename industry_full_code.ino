@@ -113,6 +113,8 @@ void setup() {
 }
 
 void loop() {
+  checkConnections();  //Ensure Wi-Fi and MQTT are connected
+
   if (!job_registered) return;
 
   measured_weight = scale.get_units(10);
@@ -173,6 +175,7 @@ void loop() {
 
   client.loop();
   delay(100);
+ }
 }
 
 void job_registration() {
@@ -297,4 +300,42 @@ char waitForKey(int timeout_ms) {
     if (key) return key;
   }
   return 0;
+}
+
+void checkConnections() {
+  if (WiFi.status() != WL_CONNECTED) {
+    lcd.clear();
+    lcd.print("WiFi Lost...");
+    Serial.println("WiFi disconnected, reconnecting...");
+    WiFi.disconnect();
+    WiFi.begin(ssid, password);
+    
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+      delay(500);
+      lcd.print(".");
+      attempts++;
+    }
+
+    lcd.clear();
+    if (WiFi.status() == WL_CONNECTED) {
+      lcd.print("WiFi Restored");
+      delay(1000);
+      client.setServer(mqtt_server, mqtt_port);  // Re-init
+      reconnect_mqtt();
+    } else {
+      lcd.print("WiFi Fail");
+      delay(1000);
+    }
+  }
+
+  if (!client.connected()) {
+    lcd.clear();
+    lcd.print("MQTT Lost...");
+    Serial.println("MQTT disconnected, reconnecting...");
+    reconnect_mqtt();
+    lcd.clear();
+    lcd.print("MQTT Restored");
+    delay(1000);
+  }
 }
