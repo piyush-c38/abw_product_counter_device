@@ -31,7 +31,7 @@ float calibration_factor = -15.44;
 
 // === Table Settings ===
 const int table_id = 21;
-const float unit_weight = 200.0;
+volatile float unit_weight = -1;
 
 // === Keypad ===
 const byte ROWS = 4;
@@ -49,12 +49,13 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 // === Variables ===
 String job_id = "";
 String process_id = "";
-int product_count = 0;
 float measured_weight = 0.0;
+int product_count = 0;
 bool job_registered = false;
 bool job_status = false;
-const unsigned long send_interval = 10000;
+const unsigned long send_interval = 1000;
 unsigned long last_sent = 0;
+String remarks = "";
 
 void setup() {
   Serial.begin(115200);
@@ -110,11 +111,25 @@ void setup() {
 
 void loop() {
   checkConnections();
-  client.loop();  // Must be called regularly
+  client.loop();
 
   if (!job_registered) return;
 
   measured_weight = scale.get_units(10);
+
+  // Reject counting if no unit_weight received yet
+  if (unit_weight <= 0) return;
+  
+  if (measured_weight > 1.5 * unit_weight) {
+    lcd.clear();
+    lcd.print("⚠ Multiple Items");
+    remarks = "multiple_items";
+    send_info();
+    remarks = "";
+    delay(2000);
+    return;
+  }
+
   product_count = (int)(measured_weight / unit_weight);
 
   lcd.setCursor(0, 0);
@@ -137,7 +152,7 @@ void loop() {
     lcd.clear();
     lcd.print("End Job? A:Yes");
     lcd.setCursor(0, 1);
-    lcd.print("           B:No");
+    lcd.print("          B:No");
 
     unsigned long start = millis();
     char confirm = NO_KEY;
@@ -168,7 +183,6 @@ void loop() {
       return;
     }
   }
-
   delay(100);
 }
 
@@ -185,11 +199,32 @@ void job_registration() {
   lcd.print("Press A to Start");
   while (keypad.getKey() != 'A') delay(10);
 
-  job_registered = true;
-  job_status = true;
+  remarks = "request_unit_weight";
+  send_info();
+  remarks = "";
+
   lcd.clear();
-  lcd.print("Started Job");
-  delay(1000);
+  lcd.print("Waiting Weight...");
+  
+  unsigned long waitStart = millis();
+  while (unit_weight <= 0 && millis() - waitStart < 10000) {
+    client.loop();  // Let MQTT receive message
+    delay(100);
+  }
+
+  if (unit_weight > 0) {
+    job_registered = true;
+    job_status = true;
+    lcd.clear();
+    lcd.print("Started Job");
+    delay(1000);
+  } else {
+    lcd.clear();
+    lcd.print("No weight recvd");
+    delay(2000);
+    resetJob();
+    job_registration();
+  }
 }
 
 String getInputFromKeypad() {
@@ -276,9 +311,10 @@ void send_info() {
   String payload = String("{\"table_id\":") + table_id +
                    ",\"job_id\":\"" + job_id +
                    "\",\"process_id\":\"" + process_id +
+                   "\",\"product_count\":\"" + product_count +
                    "\",\"weight\":" + measured_weight +
-                   ",\"count\":" + product_count +
-                   ",\"job_status\":" + job_status + "}";
+                   ",\"job_status\":" + job_status + 
+                   ",\"remarks\":" + remarks + "}";
 
   client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
@@ -287,8 +323,8 @@ void send_info() {
 void resetJob() {
   job_id = "";
   process_id = "";
-  product_count = 0;
   measured_weight = 0;
+  product_count = 0;
   last_sent = 0;
   job_status = false;
 }
@@ -337,12 +373,9 @@ void checkConnections() {
   }
 }
 
-// NEW: Handle messages from server
 void callback(char* topic, byte* message, unsigned int length) {
   String msg;
-  for (int i = 0; i < length; i++) {
-    msg += (char)message[i];
-  }
+  for (int i = 0; i < length; i++) msg += (char)message[i];
   Serial.println("MQTT Command Received: " + msg);
 
   if (msg.indexOf("alert") != -1) {
@@ -354,5 +387,14 @@ void callback(char* topic, byte* message, unsigned int length) {
     lcd.print(alertText);
     delay(3000);
     lcd.clear();
+  }
+
+  if (msg.indexOf("msg") != -1) {
+    int startIdx = msg.indexOf(":") + 2;
+    int endIdx = msg.lastIndexOf("\"");
+    String weightStr = msg.substring(startIdx, endIdx);
+    unit_weight = weightStr.toFloat();
+    Serial.print("Received unit weight: ");
+    Serial.println(unit_weight);
   }
 }
