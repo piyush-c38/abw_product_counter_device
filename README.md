@@ -17,7 +17,7 @@ The system basically measures the weight of the products produced by the employe
 
 ###Current Bugs
 
-* Weight buffer is not added.
 * Weight calibration is not done properly.
+* Weight buffer is not added.
 * Sudden count increase more than one is not handeled.
 * unit weight of different items with respect to product is not stored(do this at backend itself)

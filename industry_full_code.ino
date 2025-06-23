@@ -1,8 +1,3 @@
-//pins not to use
-// GPIO 36, 39, 34, 35 → ❌ Do not use
-// GPIO 0 → risky, avoid if possible
-// GPIO 2, 15 → can be used but have boot mode restrictions
-
 #include <WiFi.h>
 #include <HX711.h>
 #include <Keypad.h>
@@ -47,8 +42,8 @@ char keys[ROWS][COLS] = {
   {'7', '8', '9', 'C'},
   {'*', '0', '#', 'D'}
 };
-byte rowPins[ROWS] = {12, 14, 27, 26};
-byte colPins[COLS] = {25, 33, 32,13};
+byte rowPins[ROWS] = {13, 12, 14, 27};
+byte colPins[COLS] = {26, 25, 33, 32};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // === Variables ===
@@ -78,6 +73,7 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     lcd.print("WiFi Connected");
     client.setServer(mqtt_server, mqtt_port);
+    client.setCallback(callback);  // Set MQTT callback
     reconnect_mqtt();
   } else {
     lcd.print("WiFi Failed!");
@@ -113,7 +109,8 @@ void setup() {
 }
 
 void loop() {
-  checkConnections();  //Ensure Wi-Fi and MQTT are connected
+  checkConnections();
+  client.loop();  // Must be called regularly
 
   if (!job_registered) return;
 
@@ -137,45 +134,42 @@ void loop() {
 
   char key = keypad.getKey();
   if (key == 'A') {
-  lcd.clear();
-  lcd.print("End Job? A:Yes");
-  lcd.setCursor(0, 1);
-  lcd.print("           B:No");
+    lcd.clear();
+    lcd.print("End Job? A:Yes");
+    lcd.setCursor(0, 1);
+    lcd.print("           B:No");
 
-  // Wait up to 5 seconds for user to confirm
-  unsigned long start = millis();
-  char confirm = NO_KEY;
+    unsigned long start = millis();
+    char confirm = NO_KEY;
+    while (millis() - start < 5000) {
+      confirm = keypad.getKey();
+      if (confirm == 'A' || confirm == 'B') break;
+    }
 
-  while (millis() - start < 5000) {
-    confirm = keypad.getKey();
-    if (confirm == 'A' || confirm == 'B') break;
+    if (confirm == 'B') {
+      lcd.clear();
+      lcd.print("Cancelled...");
+      delay(1000);
+      return;
+    } else if (confirm == 'A') {
+      lcd.clear();
+      lcd.print("Ending Job...");
+      send_info();
+      job_registered = false;
+      last_sent = millis();
+      delay(1000);
+      resetJob();
+      job_registration();
+      return;
+    } else {
+      lcd.clear();
+      lcd.print("No input...");
+      delay(1000);
+      return;
+    }
   }
 
-  if (confirm == 'B') {
-    lcd.clear();
-    lcd.print("Cancelled...");
-    delay(1000);
-    return;  
-  } else if (confirm == 'A') {
-    lcd.clear();
-    lcd.print("Ending Job...");
-    send_info();
-    job_registered = false;
-    last_sent = millis();
-    delay(1000);
-    resetJob();         
-    job_registration(); 
-    return;
-  } else {
-    lcd.clear();
-    lcd.print("No input...");
-    delay(1000);
-    return;
-  }
-
-  client.loop();
   delay(100);
- }
 }
 
 void job_registration() {
@@ -210,16 +204,13 @@ String getInputFromKeypad() {
         input = "";
         lcd.setCursor(0, 1);
         lcd.print("                ");
-        Serial.println("Input cleared");
         lcd.setCursor(0, 1);
       } else if (key >= '0' && key <= '9') {
         input += key;
         lcd.print(key);
-        Serial.print(key);
       }
     }
   }
-  Serial.println(); // Move to new line
   return input;
 }
 
@@ -233,7 +224,7 @@ void calibrate() {
   lcd.clear();
   lcd.print("Put weight now");
   int timer = 5;
-  while(timer>0){
+  while (timer > 0) {
     lcd.setCursor(0, 1);
     lcd.print(timer);
     delay(1000);
@@ -268,18 +259,27 @@ void calibrate() {
 void reconnect_mqtt() {
   while (!client.connected()) {
     if (client.connect("ESP32Client")) break;
-    delay(2000);
+    lcd.clear();
+    lcd.print("Connecting MQTT.");
+    delay(1000);
+    lcd.clear();
+    lcd.print("Connecting MQTT");
+    delay(1000);
   }
+  client.subscribe(("table/" + String(table_id) + "/command").c_str());  // Subscribe after reconnect
 }
+
 void send_info() {
   if (!client.connected()) reconnect_mqtt();
   client.loop();
 
   String payload = String("{\"table_id\":") + table_id +
-                 ",\"job_id\":\"" + job_id +
-                 "\",\"process_id\":\"" + process_id +
-                 "\",\"weight\":" + measured_weight +
-                 ",\"count\":" + product_count + ",\"job_status\":" + job_status + "}";
+                   ",\"job_id\":\"" + job_id +
+                   "\",\"process_id\":\"" + process_id +
+                   "\",\"weight\":" + measured_weight +
+                   ",\"count\":" + product_count +
+                   ",\"job_status\":" + job_status + "}";
+
   client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
 }
@@ -290,7 +290,7 @@ void resetJob() {
   product_count = 0;
   measured_weight = 0;
   last_sent = 0;
-  job_status= false;
+  job_status = false;
 }
 
 char waitForKey(int timeout_ms) {
@@ -306,10 +306,8 @@ void checkConnections() {
   if (WiFi.status() != WL_CONNECTED) {
     lcd.clear();
     lcd.print("WiFi Lost...");
-    Serial.println("WiFi disconnected, reconnecting...");
     WiFi.disconnect();
     WiFi.begin(ssid, password);
-    
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
       delay(500);
@@ -321,7 +319,7 @@ void checkConnections() {
     if (WiFi.status() == WL_CONNECTED) {
       lcd.print("WiFi Restored");
       delay(1000);
-      client.setServer(mqtt_server, mqtt_port);  // Re-init
+      client.setServer(mqtt_server, mqtt_port);
       reconnect_mqtt();
     } else {
       lcd.print("WiFi Fail");
@@ -332,10 +330,29 @@ void checkConnections() {
   if (!client.connected()) {
     lcd.clear();
     lcd.print("MQTT Lost...");
-    Serial.println("MQTT disconnected, reconnecting...");
     reconnect_mqtt();
     lcd.clear();
     lcd.print("MQTT Restored");
     delay(1000);
+  }
+}
+
+// NEW: Handle messages from server
+void callback(char* topic, byte* message, unsigned int length) {
+  String msg;
+  for (int i = 0; i < length; i++) {
+    msg += (char)message[i];
+  }
+  Serial.println("MQTT Command Received: " + msg);
+
+  if (msg.indexOf("alert") != -1) {
+    int startIdx = msg.indexOf(":") + 2;
+    int endIdx = msg.lastIndexOf("\"");
+    String alertText = msg.substring(startIdx, endIdx);
+    lcd.clear();
+    lcd.print("⚠ ");
+    lcd.print(alertText);
+    delay(3000);
+    lcd.clear();
   }
 }
