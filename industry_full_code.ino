@@ -151,19 +151,19 @@ void loop() {
     }
   }
 
-  // //storing maxCount yet
-  // if(product_count > maxCount){
-  //   maxCount = product_count;
-  // }
+  //storing maxCount yet
+  if(product_count > maxCount){
+    maxCount = product_count;
+  }
 
-  // //avoid the first time continuous taring
-  // if(product_count == 0 && maxCount != 0){
-  //   scale.tare();
-  //   lcd.clear();
-  //   lcd.print("Taring...");
-  //   delay(1000);
-  //   maxCount = 0;
-  // }
+  //avoid the first time continuous taring
+  if(product_count == 0 && maxCount > 1 ){
+    scale.tare();
+    lcd.clear();
+    lcd.print("Taring...");
+    delay(1000);
+    maxCount = 0;
+  }
 
   lcd.setCursor(0, 0);
   lcd.print("Wt:");
