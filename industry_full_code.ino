@@ -71,13 +71,16 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     lcd.print(".");
-  }else{
+  }
+  if(WiFi.status() == WL_CONNECTED){
     lcd.clear();
     lcd.print("WiFi Connected");
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);  // Set MQTT callback
     reconnect_mqtt();
     lcd.clear();
+  }else{
+    checkConnections();
   }
 
   delay(1000);
@@ -163,7 +166,7 @@ void loop() {
 
   float added_weight = measured_weight - last_measured_weight;
 
-  if (added_weight > 1.5 * unit_weight) {
+  if (added_weight > 1.3 * unit_weight) {
    lcd.clear();
    lcd.print("Multiple Items");
    delay(2000);
