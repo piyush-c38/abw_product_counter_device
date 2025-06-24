@@ -68,22 +68,18 @@ void setup() {
 
   lcd.print("Connecting WiFi");
   WiFi.begin(ssid, password);
-  int wifi_attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifi_attempts < 20) {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     lcd.print(".");
-    wifi_attempts++;
-  }
-  lcd.clear();
-  if (WiFi.status() == WL_CONNECTED) {
+  }else{
+    lcd.clear();
     lcd.print("WiFi Connected");
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);  // Set MQTT callback
     reconnect_mqtt();
-  } else {
-    lcd.print("WiFi Failed!");
-    while (1);
+    lcd.clear();
   }
+
   delay(1000);
 
   EEPROM.begin(EEPROM_SIZE);
@@ -129,16 +125,6 @@ void loop() {
 
   // Reject counting if no unit_weight received yet
   if (unit_weight <= 0) return;
-  
-  float added_weight = measured_weight - last_measured_weight;
-
-  if (added_weight > 1.5 * unit_weight) {
-   lcd.clear();
-   lcd.print("Multiple Items");
-   delay(2000);
-   lcd.clear();
-   return;
-  }
 
   //My Developed: product counting algorithm
   if(fmod(measured_weight, unit_weight) <= BUFFER_WT){  //Handling Wt+20 range
@@ -174,6 +160,16 @@ void loop() {
   lcd.print("Cnt:");
   lcd.print(product_count);
   lcd.print("    ");
+
+  float added_weight = measured_weight - last_measured_weight;
+
+  if (added_weight > 1.5 * unit_weight) {
+   lcd.clear();
+   lcd.print("Multiple Items");
+   delay(2000);
+   lcd.clear();
+   return;
+  }
 
   if (millis() - last_sent >= send_interval) {
     send_info();
@@ -259,13 +255,16 @@ void job_registration() {
     lcd.clear();
     lcd.print("Started Job");
     delay(1000);
+    lcd.clear();
   } else {  
     lcd.clear();
     lcd.print("No weight recvd");
     delay(2000);
+    lcd.clear();
     resetJob();
     job_registration();
   }
+  scale.tare();
 }
 
 String getInputFromKeypad() {
@@ -341,6 +340,7 @@ void reconnect_mqtt() {
     lcd.clear();
     lcd.print("Connecting MQTT");
     delay(1000);
+    lcd.clear();
   }
   client.subscribe(("table/" + String(table_id) + "/command").c_str());  // Subscribe after reconnect
 }
