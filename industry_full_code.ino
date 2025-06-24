@@ -218,7 +218,7 @@ void job_registration() {
     lcd.clear();
     lcd.print("Started Job");
     delay(1000);
-  } else {
+  } else {  
     lcd.clear();
     lcd.print("No weight recvd");
     delay(2000);
@@ -314,7 +314,7 @@ void send_info() {
                    "\",\"product_count\":\"" + product_count +
                    "\",\"weight\":" + measured_weight +
                    ",\"job_status\":" + job_status + 
-                   ",\"remarks\":" + remarks + "}";
+                   ",\"remarks\":\"" + remarks + "\"}";
 
   client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
