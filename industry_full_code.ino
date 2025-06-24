@@ -134,11 +134,7 @@ void loop() {
   if (added_weight > 1.5 * unit_weight) {
    lcd.clear();
    lcd.print("Multiple Items");
-  //  remarks = "multiple_items";
-  //  send_info();
-  //  remarks = "";
    delay(2000);
-  //  last_measured_weight = measured_weight;
    lcd.clear();
    return;
   }

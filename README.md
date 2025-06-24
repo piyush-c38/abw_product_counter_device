@@ -18,3 +18,4 @@ The system basically measures the weight of the products produced by the employe
 ###Current Bugs
 
 * Multiple items at once not handled properly, missing some points
+* add the count zero tare
