@@ -23,7 +23,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define DT 4
 #define SCK 5
 HX711 scale;
-float calibration_factor = 15.55;
+float calibration_factor = 16.4;
 
 // === EEPROM Settings ===
 #define EEPROM_SIZE 32
@@ -50,6 +50,7 @@ Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 String job_id = "";
 String process_id = "";
 float measured_weight = 0.0;
+float last_measured_weight = 0.0;
 int product_count = 0;
 bool job_registered = false;
 int job_status = 0;
@@ -94,6 +95,7 @@ void setup() {
 
   scale.begin(DT, SCK);
   scale.set_scale(calibration_factor);
+  delay(100);     
   scale.tare();
 
   // lcd.clear();
@@ -116,18 +118,27 @@ void loop() {
   if (!job_registered) return;
 
   measured_weight = scale.get_units(10);
+  
+  //ignoring the small fluctuations at begining
+  // if (abs(measured_weight) < 5.0) {
+  //   measured_weight = 0.0;
+  // }
 
   // Reject counting if no unit_weight received yet
   if (unit_weight <= 0) return;
   
-  if (measured_weight > 1.5 * unit_weight) {
-    lcd.clear();
-    lcd.print("Multiple Items");
-    remarks = "multiple_items";
-    send_info();
-    remarks = "";
-    delay(2000);
-    return;
+  float added_weight = measured_weight - last_measured_weight;
+
+  if (added_weight > 1.5 * unit_weight) {
+   lcd.clear();
+   lcd.print("Multiple Items");
+  //  remarks = "multiple_items";
+  //  send_info();
+  //  remarks = "";
+   delay(2000);
+  //  last_measured_weight = measured_weight;
+   lcd.clear();
+   return;
   }
 
   product_count = (int)(measured_weight / unit_weight);
@@ -183,6 +194,14 @@ void loop() {
       return;
     }
   }
+  // else if(key == 'C'){
+  //   lcd.clear();
+  //   lcd.print("Taring...");
+  //   scale.tare();
+  //   delay(2000);
+  // }
+
+  last_measured_weight = measured_weight;
   delay(100);
 }
 
