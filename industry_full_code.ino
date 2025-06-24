@@ -52,7 +52,7 @@ String process_id = "";
 float measured_weight = 0.0;
 int product_count = 0;
 bool job_registered = false;
-bool job_status = false;
+int job_status = 0;
 const unsigned long send_interval = 1000;
 unsigned long last_sent = 0;
 String remarks = "";
@@ -214,7 +214,7 @@ void job_registration() {
 
   if (unit_weight > 0) {
     job_registered = true;
-    job_status = true;
+    job_status = 1;
     lcd.clear();
     lcd.print("Started Job");
     delay(1000);
@@ -326,7 +326,7 @@ void resetJob() {
   measured_weight = 0;
   product_count = 0;
   last_sent = 0;
-  job_status = false;
+  job_status = 0;
 }
 
 char waitForKey(int timeout_ms) {
