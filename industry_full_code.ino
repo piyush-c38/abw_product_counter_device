@@ -58,6 +58,7 @@ bool job_registered = false;
 int job_status = 0;
 const unsigned long send_interval = 1000;
 unsigned long last_sent = 0;
+int maxCount = 0;
 String remarks = "";
 
 void setup() {
@@ -149,6 +150,20 @@ void loop() {
       product_count = (int)(measured_weight / unit_weight);
     }
   }
+
+  // //storing maxCount yet
+  // if(product_count > maxCount){
+  //   maxCount = product_count;
+  // }
+
+  // //avoid the first time continuous taring
+  // if(product_count == 0 && maxCount != 0){
+  //   scale.tare();
+  //   lcd.clear();
+  //   lcd.print("Taring...");
+  //   delay(1000);
+  //   maxCount = 0;
+  // }
 
   lcd.setCursor(0, 0);
   lcd.print("Wt:");
