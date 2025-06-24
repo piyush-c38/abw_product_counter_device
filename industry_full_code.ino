@@ -4,6 +4,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
+#include <math.h> 
 
 // === WiFi Credentials ===
 const char* ssid = "TP-Link_76F6";
@@ -28,6 +29,7 @@ float calibration_factor = 16.4;
 // === EEPROM Settings ===
 #define EEPROM_SIZE 32
 #define CALIB_ADDR 0
+#define BUFFER_WT 20
 
 // === Table Settings ===
 const int table_id = 21;
@@ -141,7 +143,16 @@ void loop() {
    return;
   }
 
-  product_count = (int)(measured_weight / unit_weight);
+  //My Developed: product counting algorithm
+  if(fmod(measured_weight, unit_weight) <= BUFFER_WT){  //Handling Wt+20 range
+    product_count = (int)(measured_weight / unit_weight);
+  }else if(fmod(measured_weight, unit_weight) >BUFFER_WT){
+    if(fmod((measured_weight +20), unit_weight) <= BUFFER_WT){  //Handling Wt-20 range
+      product_count = (int)((measured_weight+BUFFER_WT) / unit_weight);
+    }else{  //Handling remaining usual cases
+      product_count = (int)(measured_weight / unit_weight);
+    }
+  }
 
   lcd.setCursor(0, 0);
   lcd.print("Wt:");
