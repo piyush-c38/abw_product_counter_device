@@ -23,7 +23,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define DT 4
 #define SCK 5
 HX711 scale;
-float calibration_factor = -15.44;
+float calibration_factor = 15.55;
 
 // === EEPROM Settings ===
 #define EEPROM_SIZE 32
@@ -83,9 +83,9 @@ void setup() {
   delay(1000);
 
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.get(CALIB_ADDR, calibration_factor);
-  if (isnan(calibration_factor) || calibration_factor == 0 || calibration_factor < -100000 || calibration_factor > 100000)
-    calibration_factor = -15.44;
+  // EEPROM.get(CALIB_ADDR, calibration_factor);
+  // if (isnan(calibration_factor) || calibration_factor == 0 || calibration_factor < -100000 || calibration_factor > 100000)
+  //   calibration_factor = 15.55;
 
   lcd.clear();
   lcd.print("Calib:");
@@ -96,11 +96,11 @@ void setup() {
   scale.set_scale(calibration_factor);
   scale.tare();
 
-  lcd.clear();
-  lcd.print("D=Calibrate");
-  delay(2000);
-  char key = waitForKey(3000);
-  if (key == 'D') calibrate();
+  // lcd.clear();
+  // lcd.print("D=Calibrate");
+  // delay(2000);
+  // char key = waitForKey(3000);
+  // if (key == 'D') calibrate();
 
   lcd.clear();
   lcd.print("System Ready");
@@ -122,7 +122,7 @@ void loop() {
   
   if (measured_weight > 1.5 * unit_weight) {
     lcd.clear();
-    lcd.print("⚠ Multiple Items");
+    lcd.print("Multiple Items");
     remarks = "multiple_items";
     send_info();
     remarks = "";
