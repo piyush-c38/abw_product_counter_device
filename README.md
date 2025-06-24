@@ -17,5 +17,4 @@ The system basically measures the weight of the products produced by the employe
 
 ###Current Bugs
 
-* Weight calibration is not done properly.
-* Weight buffer is not added.
+* Multiple items at once not handled properly, missing some points
