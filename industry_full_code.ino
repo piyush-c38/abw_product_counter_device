@@ -154,21 +154,21 @@ void loop() {
     maxCount = 0;
   }
 
-  lcd.setCursor(0, 0);
-  lcd.print("Wt:");
-  lcd.print(measured_weight, 1);
-  lcd.print("g    ");
+  // lcd.setCursor(0, 0);
+  // lcd.print("Wt:");
+  // lcd.print(measured_weight, 1);
+  // lcd.print("g    ");
 
-  lcd.setCursor(0, 1);
+  lcd.setCursor(0, 0);
   lcd.print("Cnt:");
   lcd.print(product_count);
   lcd.print("    ");
 
   float added_weight = measured_weight - last_measured_weight;
 
-  if (added_weight > 1.3 * unit_weight) {
+  if (added_weight > 1.25 * unit_weight) {
    lcd.clear();
-   lcd.print("Multiple Items");
+   lcd.print("Item Error!");
    delay(2000);
    lcd.clear();
    return;
@@ -223,7 +223,7 @@ void loop() {
   // }
 
   last_measured_weight = measured_weight;
-  delay(100);
+  delay(500);
 }
 
 void job_registration() {
