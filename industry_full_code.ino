@@ -4,7 +4,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <PubSubClient.h>
 #include <EEPROM.h>
-#include <math.h> 
+#include <math.h>
 
 // === WiFi Credentials ===
 const char* ssid = "TP-Link_76F6";
@@ -39,13 +39,13 @@ volatile float unit_weight = -1;
 const byte ROWS = 4;
 const byte COLS = 4;
 char keys[ROWS][COLS] = {
-  {'1', '2', '3', 'A'},
-  {'4', '5', '6', 'B'},
-  {'7', '8', '9', 'C'},
-  {'*', '0', '#', 'D'}
+  { '1', '2', '3', 'A' },
+  { '4', '5', '6', 'B' },
+  { '7', '8', '9', 'C' },
+  { '*', '0', '#', 'D' }
 };
-byte rowPins[ROWS] = {13, 12, 14, 27};
-byte colPins[COLS] = {26, 25, 33, 32};
+byte rowPins[ROWS] = { 13, 12, 14, 27 };
+byte colPins[COLS] = { 26, 25, 33, 32 };
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // === Variables ===
@@ -60,6 +60,8 @@ const unsigned long send_interval = 1000;
 unsigned long last_sent = 0;
 int maxCount = 0;
 String remarks = "";
+unsigned long last_status_sent = 0;
+const unsigned long status_interval = 1000;
 
 void setup() {
   Serial.begin(115200);
@@ -72,14 +74,14 @@ void setup() {
     delay(500);
     lcd.print(".");
   }
-  if(WiFi.status() == WL_CONNECTED){
+  if (WiFi.status() == WL_CONNECTED) {
     lcd.clear();
     lcd.print("WiFi Connected");
     client.setServer(mqtt_server, mqtt_port);
     client.setCallback(callback);  // Set MQTT callback
     reconnect_mqtt();
     lcd.clear();
-  }else{
+  } else {
     checkConnections();
   }
 
@@ -97,7 +99,7 @@ void setup() {
 
   scale.begin(DT, SCK);
   scale.set_scale(calibration_factor);
-  delay(100);     
+  delay(100);
   scale.tare();
 
   // lcd.clear();
@@ -120,7 +122,7 @@ void loop() {
   if (!job_registered) return;
 
   measured_weight = scale.get_units(10);
-  
+
   //ignoring the small fluctuations at begining
   // if (abs(measured_weight) < 5.0) {
   //   measured_weight = 0.0;
@@ -130,23 +132,23 @@ void loop() {
   if (unit_weight <= 0) return;
 
   //My Developed: product counting algorithm
-  if(fmod(measured_weight, unit_weight) <= BUFFER_WT){  //Handling Wt+20 range
+  if (fmod(measured_weight, unit_weight) <= BUFFER_WT) {  //Handling Wt+20 range
     product_count = (int)(measured_weight / unit_weight);
-  }else if(fmod(measured_weight, unit_weight) >BUFFER_WT){
-    if(fmod((measured_weight +20), unit_weight) <= BUFFER_WT){  //Handling Wt-20 range
-      product_count = (int)((measured_weight+BUFFER_WT) / unit_weight);
-    }else{  //Handling remaining usual cases
+  } else if (fmod(measured_weight, unit_weight) > BUFFER_WT) {
+    if (fmod((measured_weight + 20), unit_weight) <= BUFFER_WT) {  //Handling Wt-20 range
+      product_count = (int)((measured_weight + BUFFER_WT) / unit_weight);
+    } else {  //Handling remaining usual cases
       product_count = (int)(measured_weight / unit_weight);
     }
   }
 
   //storing maxCount yet
-  if(product_count > maxCount){
+  if (product_count > maxCount) {
     maxCount = product_count;
   }
 
   //avoid the first time continuous taring
-  if(product_count == 0 && maxCount > 1 ){
+  if (product_count == 0 && maxCount > 1) {
     scale.tare();
     lcd.clear();
     lcd.print("Taring...");
@@ -167,11 +169,11 @@ void loop() {
   float added_weight = measured_weight - last_measured_weight;
 
   if (added_weight > 1.25 * unit_weight) {
-   lcd.clear();
-   lcd.print("Item Error!");
-   delay(2000);
-   lcd.clear();
-   return;
+    lcd.clear();
+    lcd.print("Item Error!");
+    delay(2000);
+    lcd.clear();
+    return;
   }
 
   if (millis() - last_sent >= send_interval) {
@@ -179,12 +181,17 @@ void loop() {
     last_sent = millis();
   }
 
+  if (millis() - last_status_sent > status_interval) {
+    send_status("online");
+    last_status_sent = millis();
+  }
+
   char key = keypad.getKey();
   if (key == 'A') {
     lcd.clear();
     lcd.print("End Job? A:Yes");
     lcd.setCursor(0, 1);
-    lcd.print("          B:No");
+    lcd.print("         B:No");
 
     unsigned long start = millis();
     char confirm = NO_KEY;
@@ -201,6 +208,7 @@ void loop() {
     } else if (confirm == 'A') {
       lcd.clear();
       lcd.print("Ending Job...");
+      job_status = 0;
       send_info();
       job_registered = false;
       last_sent = millis();
@@ -245,11 +253,18 @@ void job_registration() {
 
   lcd.clear();
   lcd.print("Waiting Weight...");
-  
+
   unsigned long waitStart = millis();
   while (unit_weight <= 0 && millis() - waitStart < 10000) {
     client.loop();  // Let MQTT receive message
+    lcd.setCursor(0, 1);
+    lcd.print(unit_weight);
     delay(100);
+    //send online status
+    if (millis() - last_status_sent > status_interval) {
+      send_status("online");
+      last_status_sent = millis();
+    }
   }
 
   if (unit_weight > 0) {
@@ -259,7 +274,8 @@ void job_registration() {
     lcd.print("Started Job");
     delay(1000);
     lcd.clear();
-  } else {  
+    send_status("online");
+  } else {
     lcd.clear();
     lcd.print("No weight recvd");
     delay(2000);
@@ -275,6 +291,11 @@ String getInputFromKeypad() {
   char key;
   lcd.setCursor(0, 1);
   while (true) {
+    delay(50);
+    if (millis() - last_status_sent > status_interval) {
+      send_status("online");
+      last_status_sent = millis();
+    }
     key = keypad.getKey();
     if (key) {
       if (key == '#') break;
@@ -346,19 +367,14 @@ void reconnect_mqtt() {
     lcd.clear();
   }
   client.subscribe(("table/" + String(table_id) + "/command").c_str());  // Subscribe after reconnect
+  send_status("online");
 }
 
 void send_info() {
   if (!client.connected()) reconnect_mqtt();
   client.loop();
 
-  String payload = String("{\"table_id\":") + table_id +
-                   ",\"job_id\":\"" + job_id +
-                   "\",\"process_id\":\"" + process_id +
-                   "\",\"product_count\":\"" + product_count +
-                   "\",\"weight\":" + measured_weight +
-                   ",\"job_status\":" + job_status + 
-                   ",\"remarks\":\"" + remarks + "\"}";
+  String payload = String("{\"table_id\":") + table_id + ",\"job_id\":\"" + job_id + "\",\"process_id\":\"" + process_id + "\",\"product_count\":\"" + product_count + "\",\"weight\":" + measured_weight + ",\"job_status\":" + job_status + ",\"remarks\":\"" + remarks + "\"}";
 
   client.publish(("table/" + String(table_id) + "/data").c_str(), payload.c_str());
   Serial.println("Published: " + payload);
@@ -437,8 +453,28 @@ void callback(char* topic, byte* message, unsigned int length) {
     int startIdx = msg.indexOf(":") + 2;
     int endIdx = msg.lastIndexOf("\"");
     String weightStr = msg.substring(startIdx, endIdx);
-    unit_weight = weightStr.toFloat();
-    Serial.print("Received unit weight: ");
-    Serial.println(unit_weight);
+    if (weightStr == "Ineligible weight") {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Unregistered");
+      lcd.setCursor(0, 1);
+      lcd.print("Process");
+      delay(2000);
+      lcd.clear();
+      resetJob();
+      job_registration();
+    } else {
+      unit_weight = weightStr.toFloat();
+      Serial.print("Received unit weight: ");
+      Serial.println(unit_weight);
+    }
   }
+}
+void send_status(String state) {
+  if (!client.connected()) reconnect_mqtt();
+  client.loop();
+
+  String statusPayload = "{\"status\":\"" + state + "\"}";
+  client.publish(("table/" + String(table_id) + "/status").c_str(), statusPayload.c_str());
+  Serial.println("📡 Status Sent: " + statusPayload);
 }
