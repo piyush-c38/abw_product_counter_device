@@ -222,13 +222,12 @@ void loop() {
       delay(1000);
       return;
     }
+  } else if (key == 'C') {
+    lcd.clear();
+    lcd.print("Restarting...");
+    delay(1000);
+    ESP.restart();
   }
-  // else if(key == 'C'){
-  //   lcd.clear();
-  //   lcd.print("Taring...");
-  //   scale.tare();
-  //   delay(2000);
-  // }
 
   last_measured_weight = measured_weight;
   delay(500);
