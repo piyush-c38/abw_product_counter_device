@@ -470,7 +470,10 @@ void callback(char* topic, byte* message, unsigned int length) {
   }
 }
 void send_status(String state) {
-  if (!client.connected()) reconnect_mqtt();
+  if (!client.connected()) {
+    Serial.println("❌ MQTT not connected. Skipping status send.");
+    return;
+  }
   client.loop();
 
   String statusPayload = "{\"status\":\"" + state + "\"}";
