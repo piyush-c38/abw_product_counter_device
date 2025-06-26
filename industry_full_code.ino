@@ -111,7 +111,9 @@ void setup() {
   lcd.clear();
   lcd.print("System Ready");
 
-  Serial.println("First time status sent...");
+  Serial.println("First time status and info sent...");
+  send_info();
+  last_sent = millis();
   send_status("online");
   last_status_sent = millis();
 
@@ -227,6 +229,11 @@ void loop() {
       delay(1000);
       return;
     }
+  } else if (key == 'C') {
+    lcd.clear();
+    lcd.print("Restarting...");
+    delay(1000);
+    ESP.restart();
   }
 
   last_measured_weight = measured_weight;
@@ -313,6 +320,11 @@ String getInputFromKeypad() {
       } else if (key >= '0' && key <= '9') {
         input += key;
         lcd.print(key);
+      } else if (key == 'C') {
+        lcd.clear();
+        lcd.print("Restarting...");
+        delay(1000);
+        ESP.restart();
       }
     }
   }
@@ -452,21 +464,32 @@ void callback(char* topic, byte* message, unsigned int length) {
     int startIdx = msg.indexOf(":") + 2;
     int endIdx = msg.lastIndexOf("\"");
     String weightStr = msg.substring(startIdx, endIdx);
-    
+
     if (weightStr == "Ineligible weight") {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Unregistered");
-      lcd.setCursor(0, 1);
-      lcd.print("Process");
-      delay(2000);
-      lcd.clear();
-      resetJob();
-      job_registration();
+      if (!job_registered) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Unregistered");
+        lcd.setCursor(0, 1);
+        lcd.print("Process");
+        delay(2000);
+        lcd.clear();
+        resetJob();
+        job_registration();
+      }
     } else {
       unit_weight = weightStr.toFloat();
       Serial.print("Received unit weight: ");
       Serial.println(unit_weight);
+      if (unit_weight <= 0) {
+        Serial.println("❌ Invalid unit weight received. Aborting job.");
+        lcd.clear();
+        lcd.print("Invalid Weight");
+        delay(2000);
+        resetJob();
+        job_registration();
+        return;
+      }
     }
   }
 }
