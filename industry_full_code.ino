@@ -32,7 +32,7 @@ float calibration_factor = 16.4;
 #define BUFFER_WT 20
 
 // === Table Settings ===
-const int table_id = 21;
+const int table_id = 2;
 volatile float unit_weight = -1;
 
 // === Keypad ===
@@ -61,7 +61,7 @@ unsigned long last_sent = 0;
 int maxCount = 0;
 String remarks = "";
 unsigned long last_status_sent = 0;
-const unsigned long status_interval = 1000;
+const unsigned long status_interval = 2000;
 
 void setup() {
   Serial.begin(115200);
@@ -110,6 +110,11 @@ void setup() {
 
   lcd.clear();
   lcd.print("System Ready");
+
+  Serial.println("First time status sent...");
+  send_status("online");
+  last_status_sent = millis();
+
   delay(1000);
   lcd.clear();
   job_registration();
@@ -118,7 +123,7 @@ void setup() {
 void loop() {
   checkConnections();
   client.loop();
-
+  Serial.println("Inside main loop...");
   if (!job_registered) return;
 
   measured_weight = scale.get_units(10);
@@ -180,7 +185,7 @@ void loop() {
     send_info();
     last_sent = millis();
   }
-
+  Serial.println("Sending status from main loop...");
   if (millis() - last_status_sent > status_interval) {
     send_status("online");
     last_status_sent = millis();
@@ -222,11 +227,6 @@ void loop() {
       delay(1000);
       return;
     }
-  } else if (key == 'C') {
-    lcd.clear();
-    lcd.print("Restarting...");
-    delay(1000);
-    ESP.restart();
   }
 
   last_measured_weight = measured_weight;
@@ -252,6 +252,7 @@ void job_registration() {
 
   lcd.clear();
   lcd.print("Waiting Weight...");
+  Serial.println("Waiting Weight...");
 
   unsigned long waitStart = millis();
   while (unit_weight <= 0 && millis() - waitStart < 10000) {
@@ -260,6 +261,7 @@ void job_registration() {
     lcd.print(unit_weight);
     delay(100);
     //send online status
+    Serial.println("inside waiting weight loop");
     if (millis() - last_status_sent > status_interval) {
       send_status("online");
       last_status_sent = millis();
@@ -273,7 +275,11 @@ void job_registration() {
     lcd.print("Started Job");
     delay(1000);
     lcd.clear();
-    send_status("online");
+    Serial.println("Got the Unit weight, inside unt_wt>0 loop...");
+    if (millis() - last_status_sent > status_interval) {
+      send_status("online");
+      last_status_sent = millis();
+    }
   } else {
     lcd.clear();
     lcd.print("No weight recvd");
@@ -291,6 +297,7 @@ String getInputFromKeypad() {
   lcd.setCursor(0, 1);
   while (true) {
     delay(50);
+    Serial.println("Inside get Input for keyborad loop...");
     if (millis() - last_status_sent > status_interval) {
       send_status("online");
       last_status_sent = millis();
@@ -366,7 +373,11 @@ void reconnect_mqtt() {
     lcd.clear();
   }
   client.subscribe(("table/" + String(table_id) + "/command").c_str());  // Subscribe after reconnect
-  send_status("online");
+  Serial.println("Inside reconnect mqtt loop...");
+  if (millis() - last_status_sent > status_interval) {
+    send_status("online");
+    last_status_sent = millis();
+  }
 }
 
 void send_info() {
@@ -437,21 +448,11 @@ void callback(char* topic, byte* message, unsigned int length) {
   for (int i = 0; i < length; i++) msg += (char)message[i];
   Serial.println("MQTT Command Received: " + msg);
 
-  if (msg.indexOf("alert") != -1) {
-    int startIdx = msg.indexOf(":") + 2;
-    int endIdx = msg.lastIndexOf("\"");
-    String alertText = msg.substring(startIdx, endIdx);
-    lcd.clear();
-    lcd.print("⚠ ");
-    lcd.print(alertText);
-    delay(3000);
-    lcd.clear();
-  }
-
   if (msg.indexOf("msg") != -1) {
     int startIdx = msg.indexOf(":") + 2;
     int endIdx = msg.lastIndexOf("\"");
     String weightStr = msg.substring(startIdx, endIdx);
+    
     if (weightStr == "Ineligible weight") {
       lcd.clear();
       lcd.setCursor(0, 0);
