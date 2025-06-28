@@ -29,7 +29,7 @@ float calibration_factor = 16.4;
 // === EEPROM Settings ===
 #define EEPROM_SIZE 32
 #define CALIB_ADDR 0
-#define BUFFER_WT 20
+#define BUFFER_WT 200
 
 // === Table Settings ===
 const int table_id = 2;
@@ -88,9 +88,6 @@ void setup() {
   delay(1000);
 
   EEPROM.begin(EEPROM_SIZE);
-  // EEPROM.get(CALIB_ADDR, calibration_factor);
-  // if (isnan(calibration_factor) || calibration_factor == 0 || calibration_factor < -100000 || calibration_factor > 100000)
-  //   calibration_factor = 15.55;
 
   lcd.clear();
   lcd.print("Calib:");
@@ -102,11 +99,11 @@ void setup() {
   delay(100);
   scale.tare();
 
-  // lcd.clear();
-  // lcd.print("D=Calibrate");
-  // delay(2000);
-  // char key = waitForKey(3000);
-  // if (key == 'D') calibrate();
+  lcd.clear();
+  lcd.print("D=Calibrate");
+  delay(2000);
+  char key = waitForKey(3000);
+  if (key == 'D') calibrate();
 
   lcd.clear();
   lcd.print("System Ready");
@@ -130,11 +127,6 @@ void loop() {
 
   measured_weight = scale.get_units(10);
 
-  //ignoring the small fluctuations at begining
-  // if (abs(measured_weight) < 5.0) {
-  //   measured_weight = 0.0;
-  // }
-
   // Reject counting if no unit_weight received yet
   if (unit_weight <= 0) return;
 
@@ -153,20 +145,6 @@ void loop() {
   if (product_count > maxCount) {
     maxCount = product_count;
   }
-
-  //avoid the first time continuous taring
-  if (product_count == 0 && maxCount > 1) {
-    scale.tare();
-    lcd.clear();
-    lcd.print("Taring...");
-    delay(1000);
-    maxCount = 0;
-  }
-
-  // lcd.setCursor(0, 0);
-  // lcd.print("Wt:");
-  // lcd.print(measured_weight, 1);
-  // lcd.print("g    ");
 
   lcd.setCursor(0, 0);
   lcd.print("Cnt:");
